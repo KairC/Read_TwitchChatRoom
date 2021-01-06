@@ -41,11 +41,21 @@ class Application(Frame):
         if first == True:
             first = False
         else:
-            #if not first time to send, reconnect to twitch.
+            #if not first time to send, close socket and reconnect to twitch.
             s.close()
             s = socket.socket()
-            s.connect((server, port))
-
+            connected = False
+            while not connected:
+                try:
+                    s.connect((server, port))
+                    connected = True
+                    print("Connection successful.")
+                    self.scrltext.insert(END,'Connection successful.\n','connecting')
+                except:
+                    print("Reconnecting...")
+                    self.scrltext.insert(END,'Reconnecting...\n','connecting')
+                    time.sleep(5)
+                    
 
             
         self.nickname = 'kai11xe14'
@@ -55,17 +65,17 @@ class Application(Frame):
         s.send(f"NICK {self.nickname}\r\n".encode("utf-8"))
         s.send(f"JOIN {self.channel}\r\n".encode("utf-8"))
         print('creating a new thread...\n')
-        self.t=threading.Thread(target = self.getInfo)
+        self.t=threading.Thread(target = self.getInfo,args=(chID,))
         self.t.start()
 
+        #print('Here are',threading.active_count(),"threads.\n")
+
+
+
+    def getInfo(self,chID):
         print('Here are',threading.active_count(),"threads.\n")
-
-
-
-    def getInfo(self):
-
         
-        
+        print('Hello '+chID+'\n')
         
         connected = False
         while True:
@@ -78,9 +88,13 @@ class Application(Frame):
             print(response)
             if response.startswith('PING'):     #確認是否還在連線中
                 s.send("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
-               # print('Pong')
+                print('Pong\n')
             else:
-                username = re.search(r"\w+", response, re.U).group(0)
+                try:
+                    username = re.search(r"\w+", response, re.U).group(0)
+                except:
+                    break
+                print(username)
                 CHAT_MSG = re.compile(r"^:\w+!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :") #把這行regular expression做成一個pattern,可重複使用
                 
                 message = CHAT_MSG.sub("", response).rstrip('\n')
@@ -104,6 +118,8 @@ class Application(Frame):
                 #so we don't send messages too fast
                 time.sleep(1 / 10)
         print("a thread is dead.\n")
+        print("###################")
+        self.send(chID)
 
         
         
