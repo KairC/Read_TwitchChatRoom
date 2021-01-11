@@ -28,10 +28,11 @@ class Application(Frame):
         self.scrltext.tag_config('talking',foreground='black')
         self.scrltext.see(END)
 
-        
+    def setChID(self,chID):
+        self.chID = chID
 
         
-    def send(self,chID):
+    def send(self):
         global first
         global s
         server = 'irc.chat.twitch.tv'
@@ -45,12 +46,13 @@ class Application(Frame):
             s.close()
             s = socket.socket()
             connected = False
-            while not connected:
+            while not connected: #when offline try to connect again
                 try:
                     s.connect((server, port))
+                    s.settimeout(300)
                     connected = True
-                    print("Connection successful.")
-                    self.scrltext.insert(END,'Connection successful.\n','connecting')
+                    print("Reconnection successful.")
+                    self.scrltext.insert(END,'Reconnection successful.\n','connecting')
                 except:
                     print("Reconnecting...")
                     self.scrltext.insert(END,'Reconnecting...\n','connecting')
@@ -60,25 +62,26 @@ class Application(Frame):
             
         self.nickname = 'kai11xe14'
         self.token = 'oauth:c1qmr7kavg5l2exrnyj1z740belyyv'
-        self.channel = '#' + chID
-        s.send(f"PASS {self.token}\r\n".encode("utf-8"))
-        s.send(f"NICK {self.nickname}\r\n".encode("utf-8"))
-        s.send(f"JOIN {self.channel}\r\n".encode("utf-8"))
+        self.channel = '#' + self.chID
+        s.sendall(f"PASS {self.token}\r\n".encode("utf-8"))
+        s.sendall(f"NICK {self.nickname}\r\n".encode("utf-8"))
+        s.sendall(f"JOIN {self.channel}\r\n".encode("utf-8"))
         print('creating a new thread...\n')
-        self.t=threading.Thread(target = self.getInfo,args=(chID,))
+        self.t=threading.Thread(target = self.getInfo)
         self.t.start()
 
         #print('Here are',threading.active_count(),"threads.\n")
 
 
 
-    def getInfo(self,chID):
-        print('Here are',threading.active_count(),"threads.\n")
+    def getInfo(self):
         
-        print('Hello '+chID+'\n')
+        
+        print('Hello '+self.chID+'\n')
         
         connected = False
         while True:
+            print('Here are',threading.active_count(),"threads.\n")
             try:
                 response = s.recv(2048).decode("utf-8")
             except:
@@ -87,7 +90,7 @@ class Application(Frame):
                 break
             print(response)
             if response.startswith('PING'):     #確認是否還在連線中
-                s.send("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
+                s.sendall("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
                 print('Pong\n')
             else:
                 try:
@@ -119,7 +122,8 @@ class Application(Frame):
                 time.sleep(1 / 10)
         print("a thread is dead.\n")
         print("###################")
-        self.send(chID)
+        #time.sleep(300)
+        self.send()
 
         
         
@@ -142,6 +146,7 @@ token = 'oauth:c1qmr7kavg5l2exrnyj1z740belyyv'
 
 global s
 s = socket.socket()
+s.settimeout(300)
 s.connect((server, port))
 ##s.send(f"PASS {token}\r\n".encode("utf-8"))
 ##s.send(f"NICK {nickname}\r\n".encode("utf-8"))
@@ -165,9 +170,17 @@ frame0.pack(side=TOP,fill=BOTH)
 str_v = StringVar(window,value='default text')
 textfield = Entry(frame0,textvariable=str_v,bd=1, bg='white',fg='black')
 def on_change(event):
-    channelID = event.widget.get()
-    print(channelID)
-    app.send(chID=channelID)
+    if first is True:
+        channelID = event.widget.get()
+        app.setChID(chID = channelID)
+        print(channelID)
+        app.send()
+    else:
+        channelID = event.widget.get()
+        app.setChID(chID = channelID)
+        print(channelID)
+        s.close()
+        
     
 textfield.bind("<Return>",on_change)
 textfield.pack(padx=10, pady=10, side=LEFT)
@@ -175,10 +188,17 @@ textfield.pack(padx=10, pady=10, side=LEFT)
 #create a Button
 btn=Button(frame0, text="Enter", fg='blue')
 def callback(event):
-    channelID = textfield.get()
-    print(channelID)
-    app.send(chID=channelID)
-
+    if first is True:
+        channelID = textfield.get()
+        app.setChID(chID = channelID)
+        print(channelID)
+        app.send()
+    else:
+        channelID = textfield.get()
+        app.setChID(chID = channelID)
+        print(channelID)
+        s.close()    
+    
 
     
 btn.bind("<ButtonPress>",callback)
